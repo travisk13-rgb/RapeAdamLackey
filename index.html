@@ -9,7 +9,36 @@
 </head>
 
 <body>
+  <!-- BACKGROUND VIDEO -->
+  <div class="bg-video-wrap">
+    <video src="media/vid1.mp4" autoplay muted loop playsinline></video>
+  </div>
+  
   <div class="bg-overlay"></div>
+
+  <!-- FLOATING MEDIA (BACKDROP) -->
+  <div class="floating-backdrop">
+    <!-- 1.PNG -->
+    <div class="float-item" data-speed="0.18" style="top: 8%; left: 5%;">
+      <div class="float-inner">
+        <img src="media/1.PNG" alt="">
+      </div>
+    </div>
+
+    <!-- 3.png -->
+    <div class="float-item" data-speed="0.30" style="top: 20%; right: 8%;">
+      <div class="float-inner">
+        <img src="media/3.png" alt="">
+      </div>
+    </div>
+
+    <!-- 2.JPG -->
+    <div class="float-item" data-speed="0.22" style="bottom: 15%; left: 10%;">
+      <div class="float-inner">
+        <img src="media/2.JPG" alt="">
+      </div>
+    </div>
+  </div>
 
   <!-- HERO / COUNTDOWN -->
   <section class="hero">
@@ -36,41 +65,6 @@
       </div>
 
       <p id="message"></p>
-    </div>
-  </section>
-
-  <!-- FLOATING MEDIA -->
-  <section class="floating-section">
-    <h2>Memories for the New Year</h2>
-
-    <div class="floating-grid">
-      <!-- 1.PNG -->
-      <div class="float-item" data-speed="0.18" style="top: 4%; left: 6%;">
-        <div class="float-inner">
-          <img src="media/1.PNG" alt="">
-        </div>
-      </div>
-
-      <!-- vid1.mp4 -->
-      <div class="float-item" data-speed="0.25" style="top: 14%; left: 58%;">
-        <div class="float-inner">
-          <video src="media/vid1.mp4" autoplay muted loop playsinline></video>
-        </div>
-      </div>
-
-      <!-- 3.png -->
-      <div class="float-item" data-speed="0.30" style="top: 38%; left: 12%;">
-        <div class="float-inner">
-          <img src="media/3.png" alt="">
-        </div>
-      </div>
-
-      <!-- 2.JPG -->
-      <div class="float-item" data-speed="0.22" style="top: 65%; left: 55%;">
-        <div class="float-inner">
-          <img src="media/2.JPG" alt="">
-        </div>
-      </div>
     </div>
   </section>
 
