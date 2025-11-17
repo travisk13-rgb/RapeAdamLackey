@@ -110,19 +110,49 @@
     // Animated floating items with basic physics (bounce + mouse influence)
     (function () {
       const items = Array.from(document.querySelectorAll('.floating-backdrop .float-item'));
+
+      function parsePositionValue(val, axisSize) {
+        if (!val) return null;
+        val = val.trim();
+        if (val.endsWith('%')) {
+          return parseFloat(val) / 100 * axisSize;
+        }
+        if (val.endsWith('px')) return parseFloat(val);
+        // plain number
+        if (!isNaN(parseFloat(val))) return parseFloat(val);
+        return null;
+      }
+
       const state = items.map((el, i) => {
-        const rect = el.getBoundingClientRect();
-        // initialize if inline styles not set
-        const left = parseFloat(el.style.left) || rect.left || (20 + i * 120);
-        const top = parseFloat(el.style.top) || rect.top || (20 + i * 80);
-        el.style.left = left + 'px';
-        el.style.top = top + 'px';
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const cs = getComputedStyle(el);
+
+        // determine initial x/y in pixels from left/right/top/bottom (supports %)
+        let x = null, y = null;
+        const leftVal = cs.left;
+        const rightVal = cs.right;
+        const topVal = cs.top;
+        const bottomVal = cs.bottom;
+        if (leftVal && leftVal !== 'auto') x = parsePositionValue(leftVal, vw);
+        else if (rightVal && rightVal !== 'auto') { const v = parsePositionValue(rightVal, vw); if (v!=null) x = vw - v - el.offsetWidth; }
+        if (topVal && topVal !== 'auto') y = parsePositionValue(topVal, vh);
+        else if (bottomVal && bottomVal !== 'auto') { const v = parsePositionValue(bottomVal, vh); if (v!=null) y = vh - v - el.offsetHeight; }
+
+        // fallback to random if not provided
+        if (x == null) x = Math.random() * (vw - el.offsetWidth - 48) + 24;
+        if (y == null) y = Math.random() * (vh - el.offsetHeight - 48) + 24;
+
+        // reset left/top to 0 to avoid double-layout; we'll position via transform
+        el.style.left = '0px';
+        el.style.top = '0px';
+
         return {
           el,
-          x: left,
-          y: top,
-          vx: (Math.random() * 1.2 - 0.6) * 0.6,
-          vy: (Math.random() * 1.2 - 0.6) * 0.6,
+          x,
+          y,
+          vx: (Math.random() * 1.2 - 0.6) * 0.8,
+          vy: (Math.random() * 1.2 - 0.6) * 0.8,
           w: el.offsetWidth || 220,
           h: el.offsetHeight || 220,
           speed: parseFloat(el.dataset.speed) || 0.2
@@ -139,39 +169,46 @@
         const height = window.innerHeight;
 
         state.forEach(s => {
-          // apply slight attraction/repulsion to mouse
-          const dx = (mouse.x - (s.x + s.w / 2));
-          const dy = (mouse.y - (s.y + s.h / 2));
-          const dist = Math.sqrt(dx*dx + dy*dy) + 0.001;
-          const force = Math.max(0, 120 - dist) / 120; // closer => stronger
-          s.vx += (dx / dist) * force * 0.06;
-          s.vy += (dy / dist) * force * 0.06;
+          // attraction to mouse within a radius, weaker effect
+          const cx = s.x + s.w/2;
+          const cy = s.y + s.h/2;
+          const dx = mouse.x - cx;
+          const dy = mouse.y - cy;
+          const dist = Math.sqrt(dx*dx + dy*dy) + 0.0001;
+          const radius = Math.max(120, Math.min(300, Math.max(s.w,s.h)));
+          const force = Math.max(0, (radius - dist) / radius) * 0.04; // tuned
+          s.vx += (dx/dist) * force;
+          s.vy += (dy/dist) * force;
+
+          // gentle random wandering
+          s.vx += (Math.random()-0.5) * 0.02;
+          s.vy += (Math.random()-0.5) * 0.02;
 
           // friction
-          s.vx *= 0.985;
-          s.vy *= 0.985;
+          s.vx *= 0.98;
+          s.vy *= 0.98;
 
-          // move
-          s.x += s.vx + (scrollY * 0.001 * s.speed);
-          s.y += s.vy + (scrollY * 0.001 * s.speed);
+          // move + small scroll influence
+          s.x += s.vx + (scrollY * 0.0006 * s.speed);
+          s.y += s.vy + (scrollY * 0.0006 * s.speed);
 
           // bounce inside viewport with margin so items remain visible
-          const margin = 24;
+          const margin = 12;
           if (s.x < margin) { s.x = margin; s.vx = Math.abs(s.vx) * 0.7; }
           if (s.y < margin) { s.y = margin; s.vy = Math.abs(s.vy) * 0.7; }
           if (s.x + s.w > width - margin) { s.x = width - s.w - margin; s.vx = -Math.abs(s.vx) * 0.7; }
           if (s.y + s.h > height - margin) { s.y = height - s.h - margin; s.vy = -Math.abs(s.vy) * 0.7; }
 
-          // apply transform
+          // apply transform (keep within viewport)
           s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
         });
 
         requestAnimationFrame(step);
       }
 
-      // make sure hero sits above the backdrop
-      document.querySelector('.hero').style.position = 'relative';
-      document.querySelector('.hero').style.zIndex = 2;
+      // ensure hero is above backdrop
+      const hero = document.querySelector('.hero');
+      if (hero) { hero.style.position = 'relative'; hero.style.zIndex = 2; }
 
       requestAnimationFrame(step);
     })();
