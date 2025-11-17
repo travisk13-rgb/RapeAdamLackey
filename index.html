@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>New Year Countdown</title>
+  <title>St. Patrick's Day Countdown</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="A simple New Year countdown with floating media. Drop this folder into Netlify to deploy." />
   <link rel="stylesheet" href="styles.css">
@@ -43,7 +43,7 @@
   <!-- HERO / COUNTDOWN -->
   <section class="hero">
     <div class="center">
-      <h1>Countdown to <span id="year"></span> 🎉</h1>
+      <h1>Countdown to <span id="year"></span> 🍀 St. Patrick's Day</h1>
 
       <div class="countdown">
         <div class="time-box">
@@ -69,23 +69,33 @@
   </section>
 
   <script>
-    // Countdown
+    // St. Patrick's Day Countdown
     (function () {
-      const now = new Date();
-      const year = now.getFullYear() + 1;
-      const target = new Date(`January 1, ${year} 00:00:00`);
-
-      document.getElementById("year").textContent = year;
-
-      function update() {
+      function getNextStPatricksYear() {
         const now = new Date();
-        const diff = target - now;
+        const year = now.getFullYear();
+        const thisYearTarget = new Date(`March 17, ${year} 00:00:00`);
+        if (now < thisYearTarget) return year;
+        return year + 1;
+      }
 
+      let targetYear = getNextStPatricksYear();
+      const target = () => new Date(`March 17, ${targetYear} 00:00:00`);
+
+      document.getElementById("year").textContent = targetYear;
+
+      function updateCountdown() {
+        const now = new Date();
+        let t = target();
+        if (now > t) {
+          targetYear = getNextStPatricksYear();
+          document.getElementById("year").textContent = targetYear;
+        }
+        const diff = t - now;
         if (diff <= 0) {
-          document.getElementById("message").textContent = "🎆 Happy New Year! 🎆";
+          document.getElementById("message").textContent = "🍀 Happy St. Patrick's Day!";
           return;
         }
-
         const s = Math.floor(diff / 1000);
         document.getElementById("days").textContent = Math.floor(s / 86400);
         document.getElementById("hours").textContent = String(Math.floor(s % 86400 / 3600)).padStart(2, "0");
@@ -93,20 +103,77 @@
         document.getElementById("seconds").textContent = String(s % 60).padStart(2, "0");
       }
 
-      update();
-      setInterval(update, 1000);
+      updateCountdown();
+      setInterval(updateCountdown, 1000);
     })();
 
-    // Scroll parallax on floating items
+    // Animated floating items with basic physics (bounce + mouse influence)
     (function () {
-      const items = document.querySelectorAll(".float-item");
-      window.addEventListener("scroll", () => {
-        const y = window.scrollY;
-        items.forEach(el => {
-          const speed = parseFloat(el.dataset.speed || 0.2);
-          el.style.transform = `translateY(${y * speed}px)`;
-        });
+      const items = Array.from(document.querySelectorAll('.floating-backdrop .float-item'));
+      const state = items.map((el, i) => {
+        const rect = el.getBoundingClientRect();
+        // initialize if inline styles not set
+        const left = parseFloat(el.style.left) || rect.left || (20 + i * 120);
+        const top = parseFloat(el.style.top) || rect.top || (20 + i * 80);
+        el.style.left = left + 'px';
+        el.style.top = top + 'px';
+        return {
+          el,
+          x: left,
+          y: top,
+          vx: (Math.random() * 1.2 - 0.6) * 0.6,
+          vy: (Math.random() * 1.2 - 0.6) * 0.6,
+          w: el.offsetWidth || 220,
+          h: el.offsetHeight || 220,
+          speed: parseFloat(el.dataset.speed) || 0.2
+        };
       });
+
+      let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+      window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+      window.addEventListener('resize', () => { state.forEach(s => { s.w = s.el.offsetWidth; s.h = s.el.offsetHeight; }); });
+
+      function step() {
+        const scrollY = window.scrollY || 0;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        state.forEach(s => {
+          // apply slight attraction/repulsion to mouse
+          const dx = (mouse.x - (s.x + s.w / 2));
+          const dy = (mouse.y - (s.y + s.h / 2));
+          const dist = Math.sqrt(dx*dx + dy*dy) + 0.001;
+          const force = Math.max(0, 120 - dist) / 120; // closer => stronger
+          s.vx += (dx / dist) * force * 0.06;
+          s.vy += (dy / dist) * force * 0.06;
+
+          // friction
+          s.vx *= 0.985;
+          s.vy *= 0.985;
+
+          // move
+          s.x += s.vx + (scrollY * 0.001 * s.speed);
+          s.y += s.vy + (scrollY * 0.001 * s.speed);
+
+          // bounce inside viewport with margin so items remain visible
+          const margin = 24;
+          if (s.x < margin) { s.x = margin; s.vx = Math.abs(s.vx) * 0.7; }
+          if (s.y < margin) { s.y = margin; s.vy = Math.abs(s.vy) * 0.7; }
+          if (s.x + s.w > width - margin) { s.x = width - s.w - margin; s.vx = -Math.abs(s.vx) * 0.7; }
+          if (s.y + s.h > height - margin) { s.y = height - s.h - margin; s.vy = -Math.abs(s.vy) * 0.7; }
+
+          // apply transform
+          s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
+        });
+
+        requestAnimationFrame(step);
+      }
+
+      // make sure hero sits above the backdrop
+      document.querySelector('.hero').style.position = 'relative';
+      document.querySelector('.hero').style.zIndex = 2;
+
+      requestAnimationFrame(step);
     })();
   </script>
 </body>
