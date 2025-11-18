@@ -11,7 +11,7 @@
 <body>
   <!-- BACKGROUND VIDEO -->
   <div class="bg-video-wrap">
-    <video src="media/vid1.mp4" autoplay muted loop playsinline></video>
+    <video src="media/vid1.mp4" autoplay muted loop playsinline preload="auto"></video>
   </div>
   
   <div class="bg-overlay"></div>
@@ -113,48 +113,71 @@
           if (opts.right) item.style.right = opts.right;
           if (opts.bottom) item.style.bottom = opts.bottom;
           const inner = document.createElement('div'); inner.className = 'float-inner';
-            // check if file is video (simple heuristic: ends with video extension)
-            const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(src);
-            if (isVideo) {
-              const vid = document.createElement('video');
-              vid.src = 'media/' + src;
-              vid.autoplay = true;
-              vid.muted = true;
-              vid.loop = true;
-              vid.playsinline = true;
-              vid.style.width = '100%';
-              vid.style.height = '100%';
-              vid.style.objectFit = 'contain';
-              vid.style.display = 'block';
-              inner.appendChild(vid);
-            } else {
-              const img = document.createElement('img');
-              img.src = 'media/' + src;
-              img.alt = opts.alt || src;
-              inner.appendChild(img);
-            }
-            item.appendChild(inner);
+          const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(src);
+          if (isVideo) {
+            const vid = document.createElement('video');
+            vid.src = 'media/' + src;
+            vid.muted = true;
+            vid.loop = true;
+            vid.playsinline = true;
+            vid.autoplay = false;
+            vid.preload = 'metadata';
+            vid.style.width = '100%';
+            vid.style.height = '100%';
+            vid.style.objectFit = 'contain';
+            vid.style.display = 'block';
+            inner.appendChild(vid);
+          } else {
+            const img = document.createElement('img');
+            img.loading = 'lazy';
+            img.src = 'media/' + src;
+            img.alt = opts.alt || src;
+            inner.appendChild(img);
+          }
+          item.appendChild(inner);
           document.querySelector('.floating-backdrop').appendChild(item);
+          return item;
         }
 
         function addGalleryItem(src) {
           const gallery = document.querySelector('.content-gallery');
           if (!gallery) return;
           const wrap = document.createElement('div'); wrap.className = 'gallery-item';
-          const img = document.createElement('img'); img.src = 'media/' + src; img.alt = src;
-          wrap.appendChild(img); gallery.appendChild(wrap);
+          const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(src);
+          if (isVideo) {
+            const vid = document.createElement('video');
+            vid.src = 'media/' + src;
+            vid.controls = true;
+            vid.preload = 'metadata';
+            vid.style.display = 'block';
+            wrap.appendChild(vid);
+          } else {
+            const img = document.createElement('img'); img.loading = 'lazy'; img.src = 'media/' + src; img.alt = src;
+            wrap.appendChild(img);
+          }
+          gallery.appendChild(wrap);
         }
 
         // fetch manifest; if missing, fall back to existing files
         fetch('media/manifest.json').then(resp => resp.json()).then(manifest => {
-          (manifest.floating || []).forEach(f => createFloatItem(f.file, f.opts || {}));
+          const floating = manifest.floating || [];
+          // cap number of floating items to avoid too many heavy elements
+          const MAX_FLOATS = 8;
+          const created = [];
+          for (let i = 0; i < Math.min(floating.length, MAX_FLOATS); i++) {
+            const f = floating[i];
+            const item = createFloatItem(f.file, f.opts || {});
+            created.push(item);
+          }
           (manifest.gallery || []).forEach(g => addGalleryItem(g));
-          // after injecting, initialize physics
+          // after injecting, initialize physics and video visibility handlers
           initFloatingPhysics();
+          initFloatingVideoObservers();
         }).catch(() => {
           // fallback: use default known files
           ['1.PNG','3.png','2.JPG'].forEach((f,i)=> createFloatItem(f, { speed: [0.18,0.30,0.22][i] }));
           initFloatingPhysics();
+          initFloatingVideoObservers();
         });
 
         // physics initializer (moved into a function so we run after manifest load)
@@ -179,14 +202,20 @@
             };
           });
 
+          // throttle mouse updates by using a target and interpolating in RAF loop
           let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-          window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+          let mouseTarget = { x: mouse.x, y: mouse.y };
+          window.addEventListener('mousemove', (e) => { mouseTarget.x = e.clientX; mouseTarget.y = e.clientY; });
           window.addEventListener('resize', () => { state.forEach(s => { s.w = s.el.offsetWidth; s.h = s.el.offsetHeight; }); });
 
           function step() {
             const scrollY = window.scrollY || 0;
             const width = window.innerWidth;
             const height = window.innerHeight;
+
+            // smooth mouse interpolation (reduces event thrashing)
+            mouse.x += (mouseTarget.x - mouse.x) * 0.2;
+            mouse.y += (mouseTarget.y - mouse.y) * 0.2;
 
             state.forEach(s => {
               // apply slight attraction/repulsion to mouse
@@ -220,10 +249,43 @@
           }
 
           // make sure hero sits above the backdrop
-          document.querySelector('.hero').style.position = 'relative';
-          document.querySelector('.hero').style.zIndex = 2;
+          const hero = document.querySelector('.hero');
+          if (hero) { hero.style.position = 'relative'; hero.style.zIndex = 2; }
 
           requestAnimationFrame(step);
+        }
+
+        // Play/pause floating videos when they are visible to save CPU/bandwidth
+        function initFloatingVideoObservers() {
+          const floats = Array.from(document.querySelectorAll('.floating-backdrop .float-item'));
+          if (!('IntersectionObserver' in window)) return;
+          const io = new IntersectionObserver((entries) => {
+            entries.forEach(ent => {
+              const el = ent.target;
+              const vid = el.querySelector('video');
+              if (!vid) return;
+              if (ent.isIntersecting && ent.intersectionRatio > 0.25) {
+                // try to play, ignore errors
+                vid.play().catch(()=>{});
+              } else {
+                try { vid.pause(); } catch(e) {}
+              }
+            });
+          }, { threshold: [0, 0.1, 0.25, 0.5] });
+
+          floats.forEach(f => {
+            const vid = f.querySelector('video');
+            if (vid) {
+              io.observe(f);
+            }
+          });
+
+          // pause all floating videos when tab is hidden
+          document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+              floats.forEach(f => { const v = f.querySelector('video'); if (v) try { v.pause(); } catch(e){} });
+            }
+          });
         }
       })();
   </script>
