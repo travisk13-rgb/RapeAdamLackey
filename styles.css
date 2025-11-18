@@ -39,6 +39,60 @@ body {
   justify-content: center;
   padding: 2rem 1.5rem 4rem;
 }
+.content-section {
+  position: relative;
+  z-index: 1;
+  margin-top: 200px;
+  padding: 3rem 1.5rem 4rem;
+}
+
+.gallery {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.gallery h2,
+.offers h2 {
+  font-size: 1.6rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.content-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem 0;
+}
+
+.gallery-item {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+  border: 1px solid rgba(60,160,80,0.12);
+  aspect-ratio: 1;
+}
+
+.gallery-item img,
+.gallery-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.offers {
+  max-width: 1200px;
+  margin: 3rem auto 0;
+  text-align: center;
+  padding: 2rem 1rem;
+  background: rgba(4,50,20,0.3);
+  border-radius: 1rem;
+  border: 1px solid rgba(60,160,80,0.12);
+}
+
 
 .center {
   text-align: center;
@@ -114,12 +168,82 @@ h1 {
   height: 320px;
   max-width: 50vw;
   max-height: 50vh;
+  .countdown-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    backdrop-filter: blur(6px);
+    background: rgba(2, 10, 5, 0.5);
+    pointer-events: auto;
+  }
+
+  .countdown-wrapper .center {
+    max-width: 520px;
+    width: 100%;
+  }
+
+  .float-item {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    max-width: 55vw;
+    max-height: 55vh;
   border-radius: 1.25rem;
   overflow: hidden;
   box-shadow: 0 22px 60px rgba(0,0,0,0.6);
   border: 1px solid rgba(60,160,80,0.14);
   background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
   transform-origin: center;
+    cursor: grab;
+    transition: box-shadow 0.3s ease;
+  }
+
+  .float-item:hover {
+    box-shadow: 0 32px 80px rgba(42, 167, 82, 0.4), 0 0 30px rgba(42, 167, 82, 0.2);
+    transform: scale(1.05);
+  }
+
+  .float-item:active {
+    cursor: grabbing;
+    transform: scale(1.08);
+
+@media (max-width: 768px) {
+  .countdown-wrapper {
+    padding: 1rem 0.5rem;
+  }
+
+  .countdown-wrapper .center {
+    padding: 1.5rem 1.5rem;
+  }
+
+  h1 {
+    font-size: clamp(1.3rem, 2vw, 1.6rem);
+  }
+
+  .countdown {
+    gap: 0.6rem;
+  }
+
+  .time-box {
+    min-width: 70px;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .time-value {
+    font-size: 1.5rem;
+  }
+
+  .float-item {
+    width: 280px;
+    height: 280px;
+  }
 }
 
 .float-inner {
@@ -152,7 +276,3 @@ h1 {
   50% { transform: translateY(-16px) scale(1.02); }
 }
 
-@media (max-width: 768px) {
-  .floating-grid { min-height: 1100px; }
-  .float-item { width: 170px; height: 170px; }
-}

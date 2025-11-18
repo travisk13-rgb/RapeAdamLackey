@@ -1,0 +1,18 @@
+{
+  "floating": [
+    { "file": "1.PNG", "opts": { "speed": 0.18, "top": "12%", "left": "8%" } },
+    { "file": "3.png", "opts": { "speed": 0.22, "top": "22%", "left": "65%" } },
+    { "file": "2.JPG", "opts": { "speed": 0.26, "top": "65%", "left": "35%" } },
+    { "file": "vid1.mp4", "type": "video", "opts": { "speed": 0.20, "top": "50%", "left": "15%" } },
+    { "file": "Yack.mp4", "type": "video", "opts": { "speed": 0.23, "top": "30%", "left": "60%" } },
+    { "file": "Yackpuke.mp4", "type": "video", "opts": { "speed": 0.25, "top": "70%", "left": "40%" } }
+  ],
+  "gallery": [
+    "1.PNG",
+    "3.png",
+    "2.JPG",
+    "vid1.mp4",
+    "Yack.mp4",
+    "Yackpuke.mp4"
+  ]
+}

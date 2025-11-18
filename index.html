@@ -18,30 +18,11 @@
 
   <!-- FLOATING MEDIA (BACKDROP) -->
   <div class="floating-backdrop">
-    <!-- 1.PNG -->
-    <div class="float-item" data-speed="0.18" style="top: 8%; left: 5%;">
-      <div class="float-inner">
-        <img src="media/1.PNG" alt="">
-      </div>
-    </div>
-
-    <!-- 3.png -->
-    <div class="float-item" data-speed="0.30" style="top: 20%; right: 8%;">
-      <div class="float-inner">
-        <img src="media/3.png" alt="">
-      </div>
-    </div>
-
-    <!-- 2.JPG -->
-    <div class="float-item" data-speed="0.22" style="bottom: 15%; left: 10%;">
-      <div class="float-inner">
-        <img src="media/2.JPG" alt="">
-      </div>
-    </div>
+    <!-- floating items will be injected here from media/manifest.json -->
   </div>
 
-  <!-- HERO / COUNTDOWN -->
-  <section class="hero">
+  <!-- HERO / COUNTDOWN (fixed) -->
+  <div class="countdown-wrapper" aria-hidden="false">
     <div class="center">
       <h1>Countdown to <span id="year"></span> 🍀 St. Patrick's Day</h1>
 
@@ -66,7 +47,20 @@
 
       <p id="message"></p>
     </div>
-  </section>
+  </div>
+
+  <!-- SCROLLABLE CONTENT (gallery, offers, info) -->
+  <main class="content-section">
+    <section class="gallery">
+      <h2>St. Patrick's Day Specials</h2>
+      <div class="content-gallery"></div>
+    </section>
+
+    <section class="offers">
+      <h2>Funny Savings</h2>
+      <p>Add your offers or content here. Scroll down to see more images and content while the countdown remains fixed above.</p>
+    </section>
+  </main>
 
   <script>
     // St. Patrick's Day Countdown
@@ -107,110 +101,146 @@
       setInterval(updateCountdown, 1000);
     })();
 
-    // Animated floating items with basic physics (bounce + mouse influence)
-    (function () {
-      const items = Array.from(document.querySelectorAll('.floating-backdrop .float-item'));
-
-      function parsePositionValue(val, axisSize) {
-        if (!val) return null;
-        val = val.trim();
-        if (val.endsWith('%')) {
-          return parseFloat(val) / 100 * axisSize;
+      // Load manifest (floating items + gallery) then init animated floating items
+      (function () {
+        function createFloatItem(src, opts = {}) {
+          const item = document.createElement('div');
+          item.className = 'float-item';
+          if (opts.speed) item.dataset.speed = opts.speed;
+          // use inline percent if provided
+          if (opts.top) item.style.top = opts.top;
+          if (opts.left) item.style.left = opts.left;
+          if (opts.right) item.style.right = opts.right;
+          if (opts.bottom) item.style.bottom = opts.bottom;
+          const inner = document.createElement('div'); inner.className = 'float-inner';
+            // check if file is video (simple heuristic: ends with video extension)
+            const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(src);
+            if (isVideo) {
+              const vid = document.createElement('video');
+              vid.src = 'media/' + src;
+              vid.autoplay = true;
+              vid.muted = true;
+              vid.loop = true;
+              vid.playsinline = true;
+              vid.style.width = '100%';
+              vid.style.height = '100%';
+              vid.style.objectFit = 'contain';
+              vid.style.display = 'block';
+              inner.appendChild(vid);
+            } else {
+              const img = document.createElement('img');
+              img.src = 'media/' + src;
+              img.alt = opts.alt || src;
+              inner.appendChild(img);
+            }
+            item.appendChild(inner);
+          document.querySelector('.floating-backdrop').appendChild(item);
         }
-        if (val.endsWith('px')) return parseFloat(val);
-        // plain number
-        if (!isNaN(parseFloat(val))) return parseFloat(val);
-        return null;
-      }
 
-      const state = items.map((el, i) => {
-        const vw = window.innerWidth;
-        const vh = window.innerHeight;
-        const cs = getComputedStyle(el);
+        function addGalleryItem(src) {
+          const gallery = document.querySelector('.content-gallery');
+          if (!gallery) return;
+          const wrap = document.createElement('div'); wrap.className = 'gallery-item';
+          const img = document.createElement('img'); img.src = 'media/' + src; img.alt = src;
+          wrap.appendChild(img); gallery.appendChild(wrap);
+        }
 
-        // determine initial x/y in pixels from left/right/top/bottom (supports %)
-        let x = null, y = null;
-        const leftVal = cs.left;
-        const rightVal = cs.right;
-        const topVal = cs.top;
-        const bottomVal = cs.bottom;
-        if (leftVal && leftVal !== 'auto') x = parsePositionValue(leftVal, vw);
-        else if (rightVal && rightVal !== 'auto') { const v = parsePositionValue(rightVal, vw); if (v!=null) x = vw - v - el.offsetWidth; }
-        if (topVal && topVal !== 'auto') y = parsePositionValue(topVal, vh);
-        else if (bottomVal && bottomVal !== 'auto') { const v = parsePositionValue(bottomVal, vh); if (v!=null) y = vh - v - el.offsetHeight; }
-
-        // fallback to random if not provided
-        if (x == null) x = Math.random() * (vw - el.offsetWidth - 48) + 24;
-        if (y == null) y = Math.random() * (vh - el.offsetHeight - 48) + 24;
-
-        // reset left/top to 0 to avoid double-layout; we'll position via transform
-        el.style.left = '0px';
-        el.style.top = '0px';
-
-        return {
-          el,
-          x,
-          y,
-          vx: (Math.random() * 1.2 - 0.6) * 0.8,
-          vy: (Math.random() * 1.2 - 0.6) * 0.8,
-          w: el.offsetWidth || 220,
-          h: el.offsetHeight || 220,
-          speed: parseFloat(el.dataset.speed) || 0.2
-        };
-      });
-
-      let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-      window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
-      window.addEventListener('resize', () => { state.forEach(s => { s.w = s.el.offsetWidth; s.h = s.el.offsetHeight; }); });
-
-      function step() {
-        const scrollY = window.scrollY || 0;
-        const width = window.innerWidth;
-        const height = window.innerHeight;
-
-        state.forEach(s => {
-          // attraction to mouse within a radius, weaker effect
-          const cx = s.x + s.w/2;
-          const cy = s.y + s.h/2;
-          const dx = mouse.x - cx;
-          const dy = mouse.y - cy;
-          const dist = Math.sqrt(dx*dx + dy*dy) + 0.0001;
-          const radius = Math.max(120, Math.min(300, Math.max(s.w,s.h)));
-          const force = Math.max(0, (radius - dist) / radius) * 0.04; // tuned
-          s.vx += (dx/dist) * force;
-          s.vy += (dy/dist) * force;
-
-          // gentle random wandering
-          s.vx += (Math.random()-0.5) * 0.02;
-          s.vy += (Math.random()-0.5) * 0.02;
-
-          // friction
-          s.vx *= 0.98;
-          s.vy *= 0.98;
-
-          // move + small scroll influence
-          s.x += s.vx + (scrollY * 0.0006 * s.speed);
-          s.y += s.vy + (scrollY * 0.0006 * s.speed);
-
-          // bounce inside viewport with margin so items remain visible
-          const margin = 12;
-          if (s.x < margin) { s.x = margin; s.vx = Math.abs(s.vx) * 0.7; }
-          if (s.y < margin) { s.y = margin; s.vy = Math.abs(s.vy) * 0.7; }
-          if (s.x + s.w > width - margin) { s.x = width - s.w - margin; s.vx = -Math.abs(s.vx) * 0.7; }
-          if (s.y + s.h > height - margin) { s.y = height - s.h - margin; s.vy = -Math.abs(s.vy) * 0.7; }
-
-          // apply transform (keep within viewport)
-          s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
+        // fetch manifest; if missing, fall back to existing files
+        fetch('media/manifest.json').then(resp => resp.json()).then(manifest => {
+          (manifest.floating || []).forEach(f => createFloatItem(f.file, f.opts || {}));
+          (manifest.gallery || []).forEach(g => addGalleryItem(g));
+          // after injecting, initialize physics
+          initFloatingPhysics();
+        }).catch(() => {
+          // fallback: use default known files
+          ['1.PNG','3.png','2.JPG'].forEach((f,i)=> createFloatItem(f, { speed: [0.18,0.30,0.22][i] }));
+          initFloatingPhysics();
         });
 
-        requestAnimationFrame(step);
+        // physics initializer (moved into a function so we run after manifest load)
+        function initFloatingPhysics() {
+          const items = Array.from(document.querySelectorAll('.floating-backdrop .float-item'));
+          const state = items.map((el, i) => {
+            const rect = el.getBoundingClientRect();
+            // initialize if inline styles not set
+            const left = parseFloat(el.style.left) || rect.left || (20 + i * 120);
+            const top = parseFloat(el.style.top) || rect.top || (20 + i * 80);
+            // clear left/top for transform-based positioning
+            el.style.left = '0px'; el.style.top = '0px';
+            return {
+              el,
+              x: left,
+              y: top,
+              vx: (Math.random() * 1.2 - 0.6) * 0.6,
+              vy: (Math.random() * 1.2 - 0.6) * 0.6,
+              w: el.offsetWidth || 220,
+              h: el.offsetHeight || 220,
+              speed: parseFloat(el.dataset.speed) || 0.2
+            };
+          });
+
+          let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+          window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+          window.addEventListener('resize', () => { state.forEach(s => { s.w = s.el.offsetWidth; s.h = s.el.offsetHeight; }); });
+
+          function step() {
+            const scrollY = window.scrollY || 0;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            state.forEach(s => {
+              // apply slight attraction/repulsion to mouse
+              const dx = (mouse.x - (s.x + s.w / 2));
+              const dy = (mouse.y - (s.y + s.h / 2));
+              const dist = Math.sqrt(dx*dx + dy*dy) + 0.001;
+              const force = Math.max(0, 120 - dist) / 120; // closer => stronger
+              s.vx += (dx / dist) * force * 0.06;
+              s.vy += (dy / dist) * force * 0.06;
+
+              // friction
+              s.vx *= 0.985;
+              s.vy *= 0.985;
+
+              // move
+              s.x += s.vx + (scrollY * 0.001 * s.speed);
+              s.y += s.vy + (scrollY * 0.001 * s.speed);
+
+              // bounce inside viewport with margin so items remain visible
+              const margin = 24;
+              if (s.x < margin) { s.x = margin; s.vx = Math.abs(s.vx) * 0.7; }
+              if (s.y < margin) { s.y = margin; s.vy = Math.abs(s.vy) * 0.7; }
+              if (s.x + s.w > width - margin) { s.x = width - s.w - margin; s.vx = -Math.abs(s.vx) * 0.7; }
+              if (s.y + s.h > height - margin) { s.y = height - s.h - margin; s.vy = -Math.abs(s.vy) * 0.7; }
+
+              // apply transform
+              s.el.style.transform = `translate3d(${s.x}px, ${s.y}px, 0)`;
+            });
+
+            requestAnimationFrame(step);
+          }
+
+          // make sure hero sits above the backdrop
+          document.querySelector('.hero').style.position = 'relative';
+          document.querySelector('.hero').style.zIndex = 2;
+
+          requestAnimationFrame(step);
+        }
+      })();
+  </script>
+  <script>
+    // Ensure page content doesn't scroll under the fixed countdown.
+    (function () {
+      function syncCountdownSpacing() {
+        const cw = document.querySelector('.countdown-wrapper');
+        if (!cw) return;
+        // get height and apply as body padding-top so content starts below countdown
+        const h = Math.ceil(cw.getBoundingClientRect().height);
+        document.body.style.paddingTop = h + 'px';
       }
-
-      // ensure hero is above backdrop
-      const hero = document.querySelector('.hero');
-      if (hero) { hero.style.position = 'relative'; hero.style.zIndex = 2; }
-
-      requestAnimationFrame(step);
+      window.addEventListener('load', syncCountdownSpacing);
+      window.addEventListener('resize', syncCountdownSpacing);
+      // call early in case DOM already loaded
+      setTimeout(syncCountdownSpacing, 50);
     })();
   </script>
 </body>
